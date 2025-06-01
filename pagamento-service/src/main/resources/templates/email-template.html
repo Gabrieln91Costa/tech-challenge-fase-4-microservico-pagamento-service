@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Confirme sua conta</title>
+</head>
+<body style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
+    <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 8px; padding: 20px;">
+
+        <!-- LOGO -->
+        <div style="text-align: center;">
+            <img src="https://escolahabitar.com.br/logo-softyapp.png" alt="Logo SoftyApp" width="100" height="100">
+        </div>
+
+        <!-- QUADRADO DE MENSAGEM -->
+        <div style="margin-top: 20px; border: 1px solid #ccc; padding: 30px; height: 12cm; width: 10cm; margin-left: auto; margin-right: auto;">
+            <h2 style="text-align: center;">Bem-Vindo(a) {{email}}!</h2>
+            <p style="text-align: center;">Obrigado por se cadastrar na SoftyApp.</p>
+            <p style="text-align: center;">Confirme seu endereço de e-mail clicando no botão abaixo:</p>
+
+            <div style="text-align: center; margin-top: 20px;">
+                <a href="{{confirmLink}}" 
+                   style="background-color: #2f855a; color: white; padding: 12px 20px; text-decoration: none; border-radius: 5px;">
+                   Confirmar minha conta
+                </a>
+            </div>
+
+            <p style="margin-top: 30px; font-size: 12px; text-align: center;">
+                Atenção: contas não verificadas são automaticamente removidas após 30 dias do cadastro.
+            </p>
+        </div>
+
+        <div style="margin-top: 20px; font-size: 12px; text-align: center;">
+            <p>Se você não solicitou este cadastro, apenas ignore este e-mail.</p>
+            <p>Atenciosamente,<br>Equipe SoftyApp<br><a href="mailto:support@softyapp.com">support@softyapp.com</a></p>
+        </div>
+    </div>
+</body>
+</html>
