@@ -29,6 +29,5 @@ public class PagamentoConsumer {
             System.out.println(pedido); // fallback
         }
 
-        // criarPedido.criarPagamento(pedido);
     }
 }
