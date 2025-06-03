@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 public class PagamentoConsumer {
 
     private final CriarPagamento criarPedido;
-    private final ObjectMapper objectMapper = new ObjectMapper(); // usado para exibir JSON bonito
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public PagamentoConsumer(CriarPagamento criarPedido) {
         this.criarPedido = criarPedido;
@@ -23,10 +23,10 @@ public class PagamentoConsumer {
 
         try {
             String jsonFormatado = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(pedido);
-            System.out.println(jsonFormatado); // saída em JSON bonitinho
+            System.out.println(jsonFormatado);
         } catch (JsonProcessingException e) {
             System.out.println("Erro ao exibir pagamento como JSON. Exibindo toString:");
-            System.out.println(pedido); // fallback
+            System.out.println(pedido);
         }
 
     }
