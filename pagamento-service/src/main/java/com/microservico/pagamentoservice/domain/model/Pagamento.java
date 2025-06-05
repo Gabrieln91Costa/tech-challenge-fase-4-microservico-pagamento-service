@@ -3,6 +3,7 @@ package com.microservico.pagamentoservice.domain.model;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -17,7 +18,7 @@ public class Pagamento {
     private StatusPagamento status;
 
     // Lista de itens embutida no pagamento
-    private List<ItemPagamento> itens;
+    private List<ItemPagamento> itens = new ArrayList<>();
 
     public Pagamento() {
     }
@@ -28,7 +29,7 @@ public class Pagamento {
         this.numeroCartao = numeroCartao;
         this.valorTotal = valorTotal;
         this.status = status;
-        this.itens = itens;
+        this.itens = (itens != null) ? itens : new ArrayList<>();
     }
 
     // Getters e Setters

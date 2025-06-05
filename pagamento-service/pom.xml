@@ -21,6 +21,12 @@
         <java.version>17</java.version>
         <sonar.projectKey>pagamentoservice</sonar.projectKey>
         <sonar.projectName>pagamentoservice</sonar.projectName>
+        <sonar.coverage.exclusions>
+            **/config/SwaggerConfig.java,
+            **/config/SwaggerGroupConfig.java,
+            **/config/AppConfig.java,
+            **/config/RabbitConfig.java
+        </sonar.coverage.exclusions>
     </properties>
 
     <dependencies>
@@ -48,13 +54,13 @@
             <artifactId>spring-boot-starter-data-mongodb</artifactId>
         </dependency>
 
-        <!-- ✅ RabbitMQ -->
+        <!-- RabbitMQ -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-amqp</artifactId>
         </dependency>
 
-        <!-- SpringDoc OpenAPI (Swagger) -->
+        <!-- Swagger/OpenAPI -->
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
@@ -86,7 +92,7 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- Spring Boot Actuator -->
+        <!-- Actuator -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
@@ -102,22 +108,31 @@
 
     <build>
         <plugins>
-            <!-- Plugin Spring Boot -->
+            <!-- Spring Boot Plugin -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
 
-            <!-- Plugin JaCoCo -->
+            <!-- JaCoCo Plugin -->
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>0.8.10</version>
                 <executions>
                     <execution>
+                        <id>prepare-agent</id>
                         <goals>
                             <goal>prepare-agent</goal>
                         </goals>
+                        <configuration>
+                            <excludes>
+                                <exclude>**/config/SwaggerConfig.class</exclude>
+                                <exclude>**/config/SwaggerGroupConfig.class</exclude>
+                                <exclude>**/config/AppConfig.class</exclude>
+                                <exclude>**/config/RabbitConfig.class</exclude>
+                            </excludes>
+                        </configuration>
                     </execution>
                     <execution>
                         <id>report</id>
@@ -125,11 +140,19 @@
                         <goals>
                             <goal>report</goal>
                         </goals>
+                        <configuration>
+                            <excludes>
+                                <exclude>**/config/SwaggerConfig.class</exclude>
+                                <exclude>**/config/SwaggerGroupConfig.class</exclude>
+                                <exclude>**/config/AppConfig.class</exclude>
+                                <exclude>**/config/RabbitConfig.class</exclude>
+                            </excludes>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
 
-            <!-- Plugin SonarQube -->
+            <!-- SonarQube Plugin -->
             <plugin>
                 <groupId>org.sonarsource.scanner.maven</groupId>
                 <artifactId>sonar-maven-plugin</artifactId>
