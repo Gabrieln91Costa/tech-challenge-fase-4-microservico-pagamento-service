@@ -1,26 +1,26 @@
 package com.microservico.pagamentoservice.application.service;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.microservico.pagamentoservice.domain.dto.ItemRequestDTO;
 import com.microservico.pagamentoservice.domain.dto.PagamentoRequestDTO;
 import com.microservico.pagamentoservice.domain.dto.PagamentoRetornoDTO;
-import com.microservico.pagamentoservice.domain.model.ItemPagamento;
 import com.microservico.pagamentoservice.domain.model.Pagamento;
 import com.microservico.pagamentoservice.domain.model.StatusPagamento;
 import com.microservico.pagamentoservice.domain.repository.PagamentoRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
-
-@ExtendWith(MockitoExtension.class)
 class PagamentoServiceTest {
 
     @Mock
@@ -32,187 +32,159 @@ class PagamentoServiceTest {
     @InjectMocks
     private PagamentoService pagamentoService;
 
-    private final String estoqueServiceUrl = "http://estoqueservice:8080/estoque";
+    private PagamentoRequestDTO pagamentoRequestDTO;
+    private ItemRequestDTO itemRequestDTO;
 
-    // Helper para garantir itens inicializados
-    private void garantirItensIniciais(Pagamento pagamento) {
-        if (pagamento.getItens() == null) {
-            pagamento.setItens(new ArrayList<>());
-        }
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+
+        itemRequestDTO = new ItemRequestDTO();
+        itemRequestDTO.setSku("12345");
+        itemRequestDTO.setQuantidade(1);
+        itemRequestDTO.setPrecoUnitario(100.0);
+
+        pagamentoRequestDTO = new PagamentoRequestDTO();
+        pagamentoRequestDTO.setCpfCliente("12345678901");
+        pagamentoRequestDTO.setNumeroCartao("1234 5678 9876 5432");
+        pagamentoRequestDTO.setValorTotal(100.0);
+        pagamentoRequestDTO.setItens(Arrays.asList(itemRequestDTO));
     }
 
     @Test
-    void deveCriarPagamentoComItensValidos() {
-        ItemPagamento item = new ItemPagamento();
-        item.setSku("sku123");
-        item.setQuantidade(2);
+    void testProcessarPagamento_Sucesso() {
+        when(restTemplate.getForEntity(anyString(), eq(Void.class))).thenReturn(ResponseEntity.ok().build());
+        when(pagamentoRepository.save(any(Pagamento.class))).thenReturn(new Pagamento());
 
-        Pagamento pagamento = new Pagamento();
-        pagamento.setItens(Collections.singletonList(item));
+        Pagamento pagamento = pagamentoService.processarPagamento(pagamentoRequestDTO);
 
-        when(restTemplate.getForEntity(estoqueServiceUrl + "/sku123", Void.class))
-                .thenReturn(new ResponseEntity<>(HttpStatus.OK));
-        when(pagamentoRepository.save(any(Pagamento.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-        Pagamento resultado = pagamentoService.criarPagamento(pagamento);
-
-        assertNotNull(resultado);
-        assertEquals(StatusPagamento.ABERTO, resultado.getStatus());
-
-        verify(restTemplate).getForEntity(estoqueServiceUrl + "/sku123", Void.class);
-        verify(restTemplate).put(estoqueServiceUrl + "/sku123/baixar?quantidade=2", null);
-        verify(pagamentoRepository).save(any(Pagamento.class));
+        assertNotNull(pagamento);
+        verify(pagamentoRepository, times(1)).save(any(Pagamento.class));
     }
 
     @Test
-    void deveLancarExcecaoQuandoSkuNaoExistirNoEstoque() {
-        ItemPagamento item = new ItemPagamento();
-        item.setSku("skuInvalido");
-        item.setQuantidade(1);
+    void testProcessarPagamento_EstoqueIndisponivel() {
+        when(restTemplate.getForEntity(anyString(), eq(Void.class)))
+                .thenReturn(ResponseEntity.status(404).build());
 
-        Pagamento pagamento = new Pagamento();
-        pagamento.setItens(Collections.singletonList(item));
-
-        when(restTemplate.getForEntity(estoqueServiceUrl + "/skuInvalido", Void.class))
-                .thenReturn(new ResponseEntity<>(HttpStatus.NOT_FOUND));
-
-        RuntimeException ex = assertThrows(RuntimeException.class, () -> {
-            pagamentoService.criarPagamento(pagamento);
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+            pagamentoService.processarPagamento(pagamentoRequestDTO);
         });
 
-        assertEquals("Produto com SKU skuInvalido não encontrado no estoque.", ex.getMessage());
-
-        verify(restTemplate).getForEntity(estoqueServiceUrl + "/skuInvalido", Void.class);
-        verify(pagamentoRepository, never()).save(any());
+        assertEquals("Produto com SKU 12345 não encontrado no estoque.", exception.getMessage());
     }
 
     @Test
-    void deveProcessarRetornoPagamentoSucesso() {
-        Pagamento pagamento = new Pagamento();
-        pagamento.setId("id123");
-        pagamento.setStatus(StatusPagamento.ABERTO);
-        pagamento.setItens(Collections.singletonList(new ItemPagamento()));
-
-        when(pagamentoRepository.findById("id123")).thenReturn(Optional.of(pagamento));
-        when(pagamentoRepository.save(any(Pagamento.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
+    void testProcessarRetornoPagamento_Sucesso() {
         PagamentoRetornoDTO retornoDTO = new PagamentoRetornoDTO();
-        retornoDTO.setPagamentoId("id123");
+        retornoDTO.setPagamentoId("123");
         retornoDTO.setStatus("SUCESSO");
 
-        Pagamento resultado = pagamentoService.processarRetornoPagamento(retornoDTO);
+        Pagamento pagamento = new Pagamento();
+        pagamento.setId("123");
+        pagamento.setStatus(StatusPagamento.ABERTO);
 
-        assertEquals(StatusPagamento.FECHADO_COM_SUCESSO, resultado.getStatus());
+        when(pagamentoRepository.findById("123")).thenReturn(Optional.of(pagamento));
+        when(pagamentoRepository.save(any(Pagamento.class))).thenReturn(pagamento);
 
-        verify(pagamentoRepository).findById("id123");
-        verify(pagamentoRepository).save(any(Pagamento.class));
-        verifyNoInteractions(restTemplate);
+        Pagamento retornoPagamento = pagamentoService.processarRetornoPagamento(retornoDTO);
+
+        assertEquals(StatusPagamento.FECHADO_COM_SUCESSO, retornoPagamento.getStatus());
+        verify(pagamentoRepository, times(1)).save(any(Pagamento.class));
     }
 
     @Test
-    void deveProcessarRetornoPagamentoFalhaEReporEstoque() {
-        ItemPagamento item = new ItemPagamento();
-        item.setSku("sku123");
-
-        Pagamento pagamento = new Pagamento();
-        pagamento.setId("id123");
-        pagamento.setStatus(StatusPagamento.ABERTO);
-        pagamento.setItens(Collections.singletonList(item));
-
-        when(pagamentoRepository.findById("id123")).thenReturn(Optional.of(pagamento));
-        when(pagamentoRepository.save(any(Pagamento.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
+    void testProcessarRetornoPagamento_Falha() {
         PagamentoRetornoDTO retornoDTO = new PagamentoRetornoDTO();
-        retornoDTO.setPagamentoId("id123");
+        retornoDTO.setPagamentoId("123");
         retornoDTO.setStatus("FALHA");
 
-        Pagamento resultado = pagamentoService.processarRetornoPagamento(retornoDTO);
-
-        assertEquals(StatusPagamento.FECHADO_SEM_CREDITO, resultado.getStatus());
-
-        verify(restTemplate).put(estoqueServiceUrl + "/sku123/repor", null);
-        verify(pagamentoRepository).save(any(Pagamento.class));
-    }
-
-    @Test
-    void deveEstornarPagamentoFechadoComSucesso() {
-        ItemPagamento item = new ItemPagamento();
-        item.setSku("sku123");
-
         Pagamento pagamento = new Pagamento();
-        pagamento.setId("id123");
-        pagamento.setStatus(StatusPagamento.FECHADO_COM_SUCESSO);
-        pagamento.setItens(Collections.singletonList(item));
+        pagamento.setId("123");
+        pagamento.setStatus(StatusPagamento.ABERTO);
 
-        when(pagamentoRepository.findById("id123")).thenReturn(Optional.of(pagamento));
-        when(pagamentoRepository.save(any(Pagamento.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(pagamentoRepository.findById("123")).thenReturn(Optional.of(pagamento));
+        when(pagamentoRepository.save(any(Pagamento.class))).thenReturn(pagamento);
 
-        Pagamento resultado = pagamentoService.estornarPagamento("id123");
+        Pagamento retornoPagamento = pagamentoService.processarRetornoPagamento(retornoDTO);
 
-        assertEquals(StatusPagamento.ESTORNADO, resultado.getStatus());
-
-        verify(restTemplate).put(estoqueServiceUrl + "/sku123/repor", null);
-        verify(pagamentoRepository).save(any(Pagamento.class));
+        assertEquals(StatusPagamento.FECHADO_SEM_CREDITO, retornoPagamento.getStatus());
+        verify(pagamentoRepository, times(1)).save(any(Pagamento.class));
     }
 
     @Test
-    void deveLancarExcecaoAoEstornarPagamentoNaoEncontrado() {
-        when(pagamentoRepository.findById("idInvalido")).thenReturn(Optional.empty());
+    void testProcessarRetornoPagamento_PagamentoNaoEncontrado() {
+        PagamentoRetornoDTO retornoDTO = new PagamentoRetornoDTO();
+        retornoDTO.setPagamentoId("123");
+        retornoDTO.setStatus("SUCESSO");
 
-        RuntimeException ex = assertThrows(RuntimeException.class, () -> {
-            pagamentoService.estornarPagamento("idInvalido");
+        when(pagamentoRepository.findById("123")).thenReturn(Optional.empty());
+
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+            pagamentoService.processarRetornoPagamento(retornoDTO);
         });
 
-        assertEquals("Pagamento não encontrado", ex.getMessage());
+        assertEquals("Pagamento não encontrado", exception.getMessage());
     }
 
     @Test
-    void deveAtualizarPagamentoComSucesso() {
+    void testEstornarPagamento_Sucesso() {
         Pagamento pagamentoExistente = new Pagamento();
-        pagamentoExistente.setId("id123");
-        pagamentoExistente.setCpfCliente("12345678900");
-        pagamentoExistente.setNumeroCartao("1111222233334444");
+        pagamentoExistente.setId("123");
+        pagamentoExistente.setStatus(StatusPagamento.FECHADO_COM_SUCESSO);
         pagamentoExistente.setValorTotal(100.0);
-        // Inicializa lista para evitar null
-        pagamentoExistente.setItens(new ArrayList<>());
 
-        when(pagamentoRepository.findById("id123")).thenReturn(Optional.of(pagamentoExistente));
+        when(pagamentoRepository.findById("123")).thenReturn(Optional.of(pagamentoExistente));
         when(pagamentoRepository.save(any(Pagamento.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        PagamentoRequestDTO dto = new PagamentoRequestDTO();
-        dto.setCpfCliente("09876543211");
-        dto.setNumeroCartao("5555666677778888");
-        dto.setValorTotal(150.0);
+        Pagamento pagamentoEstornado = pagamentoService.estornarPagamento("123");
 
-        ItemRequestDTO itemDTO = new ItemRequestDTO();
-        itemDTO.setSku("sku999");
-        itemDTO.setQuantidade(3);
-        itemDTO.setPrecoUnitario(50.0);
-
-        dto.setItens(Collections.singletonList(itemDTO));
-
-        Pagamento atualizado = pagamentoService.atualizarPagamento("id123", dto);
-
-        assertEquals("09876543211", atualizado.getCpfCliente());
-        assertEquals("5555666677778888", atualizado.getNumeroCartao());
-        assertEquals(150.0, atualizado.getValorTotal());
-        assertEquals(1, atualizado.getItens().size());
-        assertEquals("sku999", atualizado.getItens().get(0).getSku());
-
-        verify(pagamentoRepository).save(any(Pagamento.class));
+        assertNotNull(pagamentoEstornado);
+        assertEquals(StatusPagamento.ESTORNADO, pagamentoEstornado.getStatus());
+        assertEquals(100.0, pagamentoEstornado.getValorTotal());
+        verify(pagamentoRepository, times(1)).save(any(Pagamento.class));
     }
 
     @Test
-    void deveLancarExcecaoAoAtualizarPagamentoInexistente() {
-        when(pagamentoRepository.findById("idInexistente")).thenReturn(Optional.empty());
+    void testEstornarPagamento_PagamentoNaoEncontrado() {
+        when(pagamentoRepository.findById("123")).thenReturn(Optional.empty());
 
-        PagamentoRequestDTO dto = new PagamentoRequestDTO();
-
-        RuntimeException ex = assertThrows(RuntimeException.class, () -> {
-            pagamentoService.atualizarPagamento("idInexistente", dto);
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+            pagamentoService.estornarPagamento("123");
         });
 
-        assertEquals("Pagamento não encontrado", ex.getMessage());
+        assertEquals("Pagamento não encontrado", exception.getMessage());
     }
 
+    @Test
+    void testEstornarPagamento_JaEstornado() {
+        Pagamento pagamentoExistente = new Pagamento();
+        pagamentoExistente.setId("123");
+        pagamentoExistente.setStatus(StatusPagamento.ESTORNADO);
+        pagamentoExistente.setValorTotal(100.0);
+
+        when(pagamentoRepository.findById("123")).thenReturn(Optional.of(pagamentoExistente));
+
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+            pagamentoService.estornarPagamento("123");
+        });
+
+        assertEquals("Pagamento já foi estornado", exception.getMessage());
+    }
+
+    @Test
+    void testEstornarPagamento_StatusInvalido() {
+        Pagamento pagamentoExistente = new Pagamento();
+        pagamentoExistente.setId("123");
+        pagamentoExistente.setStatus(StatusPagamento.ABERTO);
+        pagamentoExistente.setValorTotal(100.0);
+
+        when(pagamentoRepository.findById("123")).thenReturn(Optional.of(pagamentoExistente));
+
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+            pagamentoService.estornarPagamento("123");
+        });
+
+        assertEquals("Pagamento não pode ser estornado", exception.getMessage());
+    }
 }

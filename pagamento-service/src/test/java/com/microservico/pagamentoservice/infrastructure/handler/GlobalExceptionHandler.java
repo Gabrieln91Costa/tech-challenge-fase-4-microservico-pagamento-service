@@ -5,13 +5,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
-import com.microservico.pagamentoservice.domain.exception.PagNaoEncontradoException;
+import com.microservico.pagamentoservice.domain.exception.PagamentoNaoEncontradoException;
 
 @ControllerAdvice
-public class GlblExcepHandler {
+public class GlobalExceptionHandler {
 
-    @ExceptionHandler(PagNaoEncontradoException.class)
-    public ResponseEntity<String> handleEstoqueNaoEncontrado(PagNaoEncontradoException ex) {
+    @ExceptionHandler(PagamentoNaoEncontradoException.class)
+    public ResponseEntity<String> handleEstoqueNaoEncontrado(PagamentoNaoEncontradoException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
     }
 

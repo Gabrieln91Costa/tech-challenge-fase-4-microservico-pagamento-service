@@ -84,8 +84,8 @@ public class Pagamento {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof Pagamento)) return false;
+        if (this == o) return true;  // Verifica se é o mesmo objeto
+        if (!(o instanceof Pagamento)) return false;  // Verifica se o objeto é uma instância de Pagamento
         Pagamento that = (Pagamento) o;
         return Objects.equals(id, that.id) &&
                Objects.equals(cpfCliente, that.cpfCliente) &&

@@ -1,43 +1,45 @@
 package com.microservico.pagamentoservice.application.usecase;
 
-import com.microservico.pagamentoservice.domain.model.ItemPagamento;
-import com.microservico.pagamentoservice.domain.model.Pagamento;
-import org.junit.jupiter.api.Test;
-
+import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.*;
+import com.microservico.pagamentoservice.domain.repository.PagamentoRepository;
+import com.microservico.pagamentoservice.domain.model.Pagamento;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.*;
 
 class CriarPagamentoTest {
 
-    // Implementação simples para teste
-    static class CriarPagamentoImpl implements CriarPagamento {
+    @Mock
+    private PagamentoRepository pagamentoRepository;
 
-        @Override
-        public Pagamento criarPagamento(Pagamento pagamento) {
-            // Exemplo simples: seta status "ABERTO" e retorna o pagamento
-            pagamento.setStatus(null); // só para mostrar que pode setar algo
-            return pagamento;
-        }
+    @InjectMocks
+    private CriarPagamentoImpl criarPagamento;  // Classe concreta para injeção
+
+    private Pagamento pagamento;
+
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+
+        pagamento = new Pagamento();
+        pagamento.setId("123");
+        pagamento.setCpfCliente("12345678901");
+        pagamento.setValorTotal(100.0);
     }
 
     @Test
-    void deveCriarPagamentoComSucesso() {
-        CriarPagamento criarPagamento = new CriarPagamentoImpl();
+    void testCriarPagamento_Sucesso() {
+        // Preparando o mock
+        when(pagamentoRepository.save(any(Pagamento.class))).thenReturn(pagamento);
 
-        Pagamento pagamento = new Pagamento();
-        pagamento.setId("pag001");
-        pagamento.setCpfCliente("12345678900");
-
-        ItemPagamento item = new ItemPagamento();
-        item.setSku("sku123");
-        item.setQuantidade(2);
-        pagamento.getItens().add(item);
-
+        // Chamando o método
         Pagamento resultado = criarPagamento.criarPagamento(pagamento);
 
+        // Verificando o comportamento esperado
         assertNotNull(resultado);
-        assertEquals("pag001", resultado.getId());
-        assertEquals("12345678900", resultado.getCpfCliente());
-        assertEquals(1, resultado.getItens().size());
-        assertEquals("sku123", resultado.getItens().get(0).getSku());
+        assertEquals("123", resultado.getId());
+        assertEquals(100.0, resultado.getValorTotal());
+        verify(pagamentoRepository, times(1)).save(any(Pagamento.class));
     }
 }

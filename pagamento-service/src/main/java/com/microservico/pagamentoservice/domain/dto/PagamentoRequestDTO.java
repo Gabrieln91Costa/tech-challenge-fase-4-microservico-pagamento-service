@@ -1,5 +1,6 @@
 package com.microservico.pagamentoservice.domain.dto;
 
+import com.microservico.pagamentoservice.domain.model.StatusPagamento;
 import java.util.List;
 
 public class PagamentoRequestDTO {
@@ -8,6 +9,7 @@ public class PagamentoRequestDTO {
     private String numeroCartao;
     private double valorTotal;
     private List<ItemRequestDTO> itens;
+    private StatusPagamento status;  // Novo campo para o status
 
     // Getters e Setters
     public String getCpfCliente() {
@@ -40,5 +42,13 @@ public class PagamentoRequestDTO {
 
     public void setItens(List<ItemRequestDTO> itens) {
         this.itens = itens;
+    }
+
+    public StatusPagamento getStatus() {  // Getter para o status
+        return status;
+    }
+
+    public void setStatus(StatusPagamento status) {  // Setter para o status
+        this.status = status;
     }
 }

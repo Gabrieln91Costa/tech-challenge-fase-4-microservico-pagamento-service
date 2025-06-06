@@ -1,85 +1,68 @@
 package com.microservico.pagamentoservice.application.usecase;
 
-import com.microservico.pagamentoservice.domain.dto.ItemRequestDTO;
-import com.microservico.pagamentoservice.domain.dto.PagamentoRequestDTO;
-import com.microservico.pagamentoservice.domain.model.ItemPagamento;
-import com.microservico.pagamentoservice.domain.model.Pagamento;
-import org.junit.jupiter.api.Test;
-
-import java.util.Collections;
-
+import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.*;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.*;
+
+import com.microservico.pagamentoservice.domain.dto.PagamentoRequestDTO;
+import com.microservico.pagamentoservice.domain.model.Pagamento;
+import com.microservico.pagamentoservice.domain.repository.PagamentoRepository;
+
+import java.util.Optional;
 
 class AtualizarPagamentoTest {
 
-    // Implementação de exemplo para teste
-    static class AtualizarPagamentoImpl implements AtualizarPagamento {
+    @Mock
+    private PagamentoRepository pagamentoRepository;
 
-        @Override
-        public Pagamento atualizarPagamento(String id, PagamentoRequestDTO dto) {
-            Pagamento p = new Pagamento();
-            p.setId(id);
-            p.setCpfCliente(dto.getCpfCliente());
-            p.setNumeroCartao(dto.getNumeroCartao());
-            p.setValorTotal(dto.getValorTotal());
+    private AtualizarPagamento atualizarPagamento;
 
-            // Transforma itens DTO em ItemPagamento
-            if (dto.getItens() != null) {
-                for (ItemRequestDTO itemDTO : dto.getItens()) {
-                    ItemPagamento item = new ItemPagamento();
-                    item.setSku(itemDTO.getSku());
-                    item.setQuantidade(itemDTO.getQuantidade());
-                    item.setPrecoUnitario(itemDTO.getPrecoUnitario());
-                    p.getItens().add(item);
-                }
-            }
-            return p;
-        }
+    private PagamentoRequestDTO pagamentoRequestDTO;
+    private Pagamento pagamentoExistente;
+
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+
+        atualizarPagamento = new AtualizarPagamentoImpl(pagamentoRepository);
+
+        pagamentoRequestDTO = new PagamentoRequestDTO();
+        pagamentoRequestDTO.setCpfCliente("12345678901");
+        pagamentoRequestDTO.setNumeroCartao("1234 5678 9876 5432");
+        pagamentoRequestDTO.setValorTotal(150.0);
+
+        pagamentoExistente = new Pagamento();
+        pagamentoExistente.setId("123");
+        pagamentoExistente.setCpfCliente("12345678901");
+        pagamentoExistente.setNumeroCartao("0000 0000 0000 0000");
+        pagamentoExistente.setValorTotal(100.0);
     }
 
     @Test
-    void deveAtualizarPagamentoCorretamente() {
-        AtualizarPagamento atualizarPagamento = new AtualizarPagamentoImpl();
+    void testAtualizarPagamento_Sucesso() {
+        when(pagamentoRepository.findById("123")).thenReturn(Optional.of(pagamentoExistente));
+        when(pagamentoRepository.save(any(Pagamento.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        PagamentoRequestDTO dto = new PagamentoRequestDTO();
-        dto.setCpfCliente("12345678900");
-        dto.setNumeroCartao("1234123412341234");
-        dto.setValorTotal(250.0);
+        Pagamento pagamentoAtualizado = atualizarPagamento.atualizarPagamento("123", pagamentoRequestDTO);
 
-        ItemRequestDTO itemDTO = new ItemRequestDTO();
-        itemDTO.setSku("sku123");
-        itemDTO.setQuantidade(2);
-        itemDTO.setPrecoUnitario(125.0);
-        dto.setItens(Collections.singletonList(itemDTO));
-
-        Pagamento pagamento = atualizarPagamento.atualizarPagamento("id001", dto);
-
-        assertEquals("id001", pagamento.getId());
-        assertEquals("12345678900", pagamento.getCpfCliente());
-        assertEquals("1234123412341234", pagamento.getNumeroCartao());
-        assertEquals(250.0, pagamento.getValorTotal());
-        assertEquals(1, pagamento.getItens().size());
-        assertEquals("sku123", pagamento.getItens().get(0).getSku());
-        assertEquals(2, pagamento.getItens().get(0).getQuantidade());
-        assertEquals(125.0, pagamento.getItens().get(0).getPrecoUnitario());
+        assertNotNull(pagamentoAtualizado);
+        assertEquals(150.0, pagamentoAtualizado.getValorTotal());
+        assertEquals("12345678901", pagamentoAtualizado.getCpfCliente());
+        assertEquals("1234 5678 9876 5432", pagamentoAtualizado.getNumeroCartao());
+        verify(pagamentoRepository, times(1)).save(any(Pagamento.class));
     }
 
     @Test
-    void deveRetornarPagamentoVazioQuandoDtoSemItens() {
-        AtualizarPagamento atualizarPagamento = new AtualizarPagamentoImpl();
+    void testAtualizarPagamento_PagamentoNaoEncontrado() {
+        when(pagamentoRepository.findById("123")).thenReturn(Optional.empty());
 
-        PagamentoRequestDTO dto = new PagamentoRequestDTO();
-        dto.setCpfCliente("00000000000");
-        dto.setNumeroCartao("0000000000000000");
-        dto.setValorTotal(0.0);
-        dto.setItens(null);
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+            atualizarPagamento.atualizarPagamento("123", pagamentoRequestDTO);
+        });
 
-        Pagamento pagamento = atualizarPagamento.atualizarPagamento("id002", dto);
-
-        assertEquals("id002", pagamento.getId());
-        assertEquals("00000000000", pagamento.getCpfCliente());
-        assertEquals("0000000000000000", pagamento.getNumeroCartao());
-        assertEquals(0.0, pagamento.getValorTotal());
-        assertTrue(pagamento.getItens().isEmpty());
+        assertEquals("Pagamento não encontrado", exception.getMessage());
     }
 }
